@@ -1,5 +1,6 @@
-import React, { createElement, Component } from 'react';
+import React, { createElement, Component, useContext } from 'react';
 const log = console.log
+const ThemeContext = React.createContext()
 
 const tags = [
     "button",
@@ -42,29 +43,56 @@ function computeStyle(props, strings, vals) {
 function genComponentStyle(tag) {
     return function(strings, ...vals) {
         return class extends Component {
-            constructor(props) {
-                super(props)
+            static contextType = ThemeContext
+
+            constructor(props, context) {
+                super(props, context)
                 this.style = {}
             }
+
             componentWillMount() {
+                if(this.context)
+                    this.props = { ...this.props, theme: this.context}
                 this.style = computeStyle(this.props, strings, vals)
-                log(this.props, this.style)
             }
+
             componentWillUpdate(props) {
+                if(this.context)
+                    props = { ...props, theme: this.context}
                 this.style = computeStyle(props, strings, vals)
             }
+
             render() {
+                let props = this.props
+                if(this.context) {
+                    props = { ...this.props, theme: this.context }
+                    this.style = computeStyle(props, strings, vals)
+                }
+
                 return (
-                    createElement(tag, { style: this.style, ...this.props }, [...this.props.children])
+                    createElement(tag, { style: this.style, ...props }, [...props.children])
                 )
             }
         }        
     }
 }
 
-/*<button {...this.props} style={this.style}>
-    {this.props.children}
-</button>*/
+function ThemeProvider(props) {
+    const outerTheme = props.theme
+    const innerTheme = useContext(ThemeContext)
+    const theme = { ... outerTheme, ... innerTheme}
+    return (
+        <React.Fragment>
+            <ThemeContext.Provider value={theme}>
+                {props.children}
+            </ThemeContext.Provider>
+        </React.Fragment>
+    )
+}
+
+export {
+    ThemeProvider
+}
 
 const styled = {}
 
@@ -73,60 +101,3 @@ tags.forEach(tag => {
 })
 
 export default styled
-
-
-/********* TRASH BIN ****/
-
-
-
-
-/*
-const _styled = {
-    button: function(strings, ...vals) {
-        return class extends Component {
-            constructor(props) {
-                super(props)
-                this.style = {}
-            }
-
-            computeStyle(props, strings, vals) {
-                let s = ""
-                for (var i = 0; i < strings.length; i++) {
-                    var _str = strings[i];
-                    var val
-                    if(vals) {
-                        val = vals[i]
-                        if(typeof val === "function") {
-                            val = val(props)
-                        }
-                        _str += val
-                    }            
-                    s += _str
-                }
-                const str = s
-                const style = {}
-                str.split(";").forEach((e)=> {
-                    const [prop, val] = e.trim().split(":")
-                    style[prop] = val
-                });
-                return style
-            }
-
-            componentWillMount() {
-                this.style = this.computeStyle(this.props, strings, vals)
-            }
-
-            componentWillUpdate(props) {
-                this.style = this.computeStyle(props, strings, vals)
-            }
-
-            render() {
-                return (
-                    <button {...this.props} style={this.style}>
-                        {this.props.children}
-                    </button>
-                )
-            }
-        }
-    }
-}*/
